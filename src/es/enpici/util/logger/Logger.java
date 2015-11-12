@@ -45,28 +45,28 @@ public class Logger {
      * @param text 
      */
     public void info(String text){
-        this.writeLog(text, Log.INFO);
+        this.writeLog(text, Severity.INFO);
     }
     /**
      * Genera un Log de tipo warning.
      * @param text 
      */
     public void warning(String text){
-         this.writeLog(text, Log.WARNING);
+         this.writeLog(text, Severity.WARNING);
     }
     /**
      * Genera un Log de tipo severe.
      * @param text 
      */
     public void severe(String text){
-         this.writeLog(text, Log.SEVERE);
+         this.writeLog(text, Severity.SEVERE);
     }
     /**
      * Genera un Log del tipo especifico.
      * @param text
      * @param level Tipo de Log
      */
-    public void writeLog(String text,Integer level) {
+    public void writeLog(String text,Severity level) {
         Log.writeLog(text,level,clase);
     }
     /**
@@ -74,7 +74,7 @@ public class Logger {
      * @param arraytext Array con textos a mostrar del mismo tipo
      * @param level Tipo de Log
      */
-    public void writeLog(String[] arraytext,Integer level) {
+    public void writeLog(String[] arraytext,Severity level) {
         Log.writeLog(arraytext,level,clase);
     }
     /**
@@ -82,7 +82,7 @@ public class Logger {
      * @param arraytext ArrayList con textos a mostrar del mismo tipo
      * @param level Tipo de Log
      */
-    public  void writeLog(ArrayList<String> arraytext,Integer level) {
+    public  void writeLog(ArrayList<String> arraytext,Severity level) {
         Log.writeLog(arraytext,level,clase);
     }
     /**
@@ -110,7 +110,7 @@ public class Logger {
      * @param level
      * @param text 
      */
-    public void log(Integer level, String text ) {
+    public void log(Severity level, String text ) {
       this.writeLog(text, level);
     }
 
