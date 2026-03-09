@@ -1,192 +1,157 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package es.enpici.logger;
 
 import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+import java.time.Clock;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Date;
+import java.util.List;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
- * @author Enrique
+ * Servicio de logging inyectable, sin estado global estático.
  */
 public class Log {
 
+    private static final int MAX_ENTRIES = 1000;
+    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss.SSS");
 
-    private static ArrayList<String> log;
-    private static boolean traza = false;
-    private static boolean continua = false;
+    private final ReentrantLock lock = new ReentrantLock(true);
+    private final List<String> entries = new ArrayList<>();
+    private final Path logDirectory;
+    private final Clock clock;
 
+    private boolean enabled;
+    private boolean appendMode;
 
-    /**
-     * Activa el log
-     */
-    public static void LogOn() {
-        traza = true;
+    public Log() {
+        this(Path.of("Logs"), Clock.systemDefaultZone());
     }
 
-    /**
-     * Desactiva el log
-     */
-    public static void LogOff() {
-        traza = false;
-        continua = false;
+    Log(Path logDirectory, Clock clock) {
+        this.logDirectory = logDirectory;
+        this.clock = clock;
     }
 
-    /**
-     * Muestra el estado del Log
-     *
-     * @return boolean (Activo/Desactivo)
-     */
-    public static boolean LogState() {
-        return traza;
-    }
-
-    /**
-     * Genera un Log del tipo especifico.
-     *
-     * @param text  String del log.
-     * @param nivel Codigo del nivel.
-     * @param clase Clase que lanza el log.
-     */
-    public static void writeLog(String text, es.enpici.logger.Severity nivel, String clase) {
-        if (traza) {
-            if (log == null) {
-                log = new ArrayList<>(0);
-            }
-            DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss.SSS");
-            Date date = new Date();
-            String ntext = String.format("[ %s ][%s]:#%s# %s", dateFormat.format(date), nivel, clase, text);
-            log.add(ntext);
-            System.out.println(log.size() + ": " + ntext);
-            if (log.size() > 1000) {
-                continua = true;
-                WriteFile();
-            }
-        }
-    }
-
-    /**
-     * Genera un Log del tipo especifico.
-     *
-     * @param arraytext Array de String del log.
-     * @param level     Codigo del nivel.
-     * @param clase     Clase que lanza el log.
-     */
-    public static void writeLog(String[] arraytext, Severity level, String clase) {
-        if (traza) {
-            for (String arraytext1 : arraytext) {
-                writeLog(arraytext1, level, clase);
-            }
-        }
-    }
-
-    /**
-     * Genera un Log del tipo especifico.
-     *
-     * @param arraytext ArrayList de String del log.
-     * @param level     Codigo del nivel.
-     * @param clase     Clase que lanza el log.
-     */
-    public static void writeLog(ArrayList<String> arraytext, Severity level, String clase) {
-        if (traza) {
-            arraytext.stream().forEach((arraytext1) -> {
-                writeLog(arraytext1, level, clase);
-            });
-        }
-    }
-
-    /**
-     * Devuelve el log convertido en texto.
-     *
-     * @return String con el contenido del log
-     */
-    public static String toText() {
-        String salida = "";
-        salida = log.stream().map((v) -> v + "\r\n").reduce(salida, String::concat);
-        return salida;
-    }
-
-    /**
-     * Reinicia el log
-     */
-    public static void Restart() {
-        log.clear();
-    }
-
-    /**
-     * Escribe el fichero Log.
-     */
-    public static void WriteFile() {
-        if (traza) {
-            WriteLog(toText());
-        }
-    }
-
-    public static void printStackTrace() {
-        StackTraceElement[] stack = Thread.currentThread().getStackTrace();
-        for (int pos = stack.length - 1; pos > 1; pos--) {
-            StackTraceElement elem = stack[pos];
-            //se elimina el paquete del nombre de la clase
-            String name = elem.getClassName().substring(
-                    elem.getClassName().lastIndexOf(".") + 1);
-            System.out.print(name + "." + elem.getMethodName() + ":"
-                    + elem.getLineNumber());
-            if (pos > 2) {
-                System.out.print("->");
-            }
-        }
-    }
-
-    private static void WriteLog(String salida) {
-        FileWriter fw;
-        Object i;
+    public void on() {
+        lock.lock();
         try {
-            String logs = "Logs";
-            File f = new File(logs);
-            if (!f.exists()) {
-                writeLog("OH! no tiene el directorio Log, vamos a crearlo", Severity.INFO, Log.class.getName());
-                if (f.mkdir()) {
-                    writeLog("Directorio de log creado con exito", Severity.INFO, Log.class.getName());
-                    logs += "/";
-                } else {
-                    writeLog("Hemos tenido un problema al crear el directorio. Guardaremos los logs en la raiz", Severity.WARNING, Log.class.getName());
-                    logs = "";
-                }
-            } else {
-                logs += "/";
-            }
-            File fichero = new File(logs + "1Log.txt");
-            int j = 2;
-            while (fichero.exists()) {
-                fichero = new File(logs + j + "Log.txt");
-                j++;
-            }
-            fw = new FileWriter(fichero, continua);
-            try (BufferedWriter bw = new BufferedWriter(fw)) {
-                bw.write(salida);
-            } catch (Exception ex) {
-                System.out.println("Un error inexperado ha ocurrido y no se ha podido almacenar el Log, pero nose preocupe se lo mostraremos por pantalla");
-                System.out.println(salida);
-            } finally {
-                fw.close();
-                Restart();
-            }
-        } catch (IOException ex) {
-            System.out.println("Un error inexperado ha ocurrido y no se ha podido almacenar el Log, pero nose preocupe se lo mostraremos por pantalla");
-            System.out.println(ex.getMessage());
-            System.out.println(salida);
+            enabled = true;
+        } finally {
+            lock.unlock();
         }
     }
 
-    private Log() {
+    public void off() {
+        lock.lock();
+        try {
+            enabled = false;
+            appendMode = false;
+        } finally {
+            lock.unlock();
+        }
     }
 
+    public boolean state() {
+        lock.lock();
+        try {
+            return enabled;
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public void writeLog(String text, Severity level, String clase) {
+        lock.lock();
+        try {
+            if (!enabled) {
+                return;
+            }
+            String timestamp = LocalDateTime.now(clock).format(FORMATTER);
+            String entry = String.format("[ %s ][%s]:#%s# %s", timestamp, level, clase, text);
+            entries.add(entry);
+            System.out.println(entries.size() + ": " + entry);
+            if (entries.size() > MAX_ENTRIES) {
+                appendMode = true;
+                writeFileInternal();
+            }
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public void writeLog(String[] arrayText, Severity level, String clase) {
+        for (String text : arrayText) {
+            writeLog(text, level, clase);
+        }
+    }
+
+    public void writeLog(List<String> arrayText, Severity level, String clase) {
+        for (String text : arrayText) {
+            writeLog(text, level, clase);
+        }
+    }
+
+    public String toText() {
+        lock.lock();
+        try {
+            return String.join("\r\n", entries) + (entries.isEmpty() ? "" : "\r\n");
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public void restart() {
+        lock.lock();
+        try {
+            entries.clear();
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public void writeFile() {
+        lock.lock();
+        try {
+            if (!enabled) {
+                return;
+            }
+            writeFileInternal();
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    private void writeFileInternal() {
+        String output = String.join("\r\n", entries) + (entries.isEmpty() ? "" : "\r\n");
+        try {
+            Files.createDirectories(logDirectory);
+            Path targetFile = nextAvailableFile();
+            try (BufferedWriter writer = Files.newBufferedWriter(
+                    targetFile,
+                    StandardOpenOption.CREATE,
+                    appendMode ? StandardOpenOption.APPEND : StandardOpenOption.TRUNCATE_EXISTING)) {
+                writer.write(output);
+            }
+            restart();
+        } catch (IOException ex) {
+            System.err.println("No se ha podido almacenar el Log. Se muestra por pantalla.");
+            System.err.println(ex.getMessage());
+            System.err.println(output);
+        }
+    }
+
+    private Path nextAvailableFile() {
+        int index = 1;
+        Path file;
+        do {
+            file = logDirectory.resolve(index + "Log.txt");
+            index++;
+        } while (Files.exists(file));
+        return file;
+    }
 }
