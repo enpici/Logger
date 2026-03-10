@@ -20,7 +20,7 @@ import java.util.Date;
 public class Log {
 
 
-    private static ArrayList<String> log;
+    private static ArrayList<String> log = new ArrayList<>(0);
     private static boolean traza = false;
     private static boolean continua = false;
 
@@ -58,9 +58,6 @@ public class Log {
      */
     public static void writeLog(String text, es.enpici.logger.Severity nivel, String clase) {
         if (traza) {
-            if (log == null) {
-                log = new ArrayList<>(0);
-            }
             DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss.SSS");
             Date date = new Date();
             String ntext = String.format("[ %s ][%s]:#%s# %s", dateFormat.format(date), nivel, clase, text);
@@ -109,6 +106,9 @@ public class Log {
      * @return String con el contenido del log
      */
     public static String toText() {
+        if (log == null || log.isEmpty()) {
+            return "";
+        }
         String salida = "";
         salida = log.stream().map((v) -> v + "\r\n").reduce(salida, String::concat);
         return salida;
@@ -118,6 +118,10 @@ public class Log {
      * Reinicia el log
      */
     public static void Restart() {
+        if (log == null) {
+            log = new ArrayList<>(0);
+            return;
+        }
         log.clear();
     }
 
@@ -125,7 +129,7 @@ public class Log {
      * Escribe el fichero Log.
      */
     public static void WriteFile() {
-        if (traza) {
+        if (traza && log != null && !log.isEmpty()) {
             WriteLog(toText());
         }
     }
